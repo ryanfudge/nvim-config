@@ -68,7 +68,7 @@ require("lazy").setup({
         }
       })
   
-      -- Safely load the fzf extension
+      -- fzf extension
       pcall(telescope.load_extension, 'fzf')
   
       -- Keybindings
