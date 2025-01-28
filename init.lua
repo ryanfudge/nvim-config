@@ -126,6 +126,30 @@ require("lazy").setup({
     end,
   },
 
+  -- Mason Plugins
+  {
+    "williamboman/mason.nvim",
+    config = function()
+      require("mason").setup()
+    end,
+  },
+  {
+    "williamboman/mason-lspconfig.nvim",
+    dependencies = { "williamboman/mason.nvim", "neovim/nvim-lspconfig" },
+    config = function()
+      require("mason-lspconfig").setup({
+        ensure_installed = { "pyright", "clangd" },
+      })
+      require("mason-lspconfig").setup_handlers({
+        function(server_name)
+          require("lspconfig")[server_name].setup({
+            capabilities = require("cmp_nvim_lsp").default_capabilities(),
+          })
+        end,
+      })
+    end,
+  },
+
   -- D) nvim-tree.lua (File Explorer)
   {
     "nvim-tree/nvim-tree.lua",
