@@ -170,6 +170,25 @@ require("lazy").setup({
       vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { desc = "Toggle Nvim-Tree" })
     end,
   },
+  -- E) GitHub Copilot
+  {
+    "github/copilot.vim",
+    config = function()
+      -- Optional: Disable default Copilot mappings if you prefer to set your own
+      vim.g.copilot_no_tab_map = true
+
+      -- Set up keybindings for Copilot
+      -- Example: Use <C-J> to accept Copilot suggestions
+      vim.api.nvim_set_keymap("i", "<C-J>", 'copilot#Accept("<CR>")', { expr = true, silent = true, noremap = true })
+
+      -- Optional: Trigger Copilot manually
+      vim.api.nvim_set_keymap("n", "<leader>cp", ":Copilot panel<CR>", { silent = true, noremap = true })
+      vim.api.nvim_set_keymap("n", "<leader>cf", ":Copilot suggestion<CR>", { silent = true, noremap = true })
+    end,
+    -- Optional: Load Copilot only when needed
+    -- event = "InsertEnter",
+  }
+
 })
 
 -- 3. General Settings
