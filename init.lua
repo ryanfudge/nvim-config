@@ -29,7 +29,7 @@ require("lazy").setup({
           folds = false,
         },
         underline = true,
-        contrast = "medium", -- "hard", "soft", or "medium"
+        contrast = "hard", -- "hard", "soft", or "medium"
         overrides = {},
         dim_inactive = false,
         transparent_mode = false,
