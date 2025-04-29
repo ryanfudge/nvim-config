@@ -138,7 +138,7 @@ require("lazy").setup({
     dependencies = { "williamboman/mason.nvim", "neovim/nvim-lspconfig" },
     config = function()
       require("mason-lspconfig").setup({
-        ensure_installed = { "pyright", "clangd" },
+        ensure_installed = { "pyright", "clangd", "gopls"},
       })
       require("mason-lspconfig").setup_handlers({
         function(server_name)
@@ -187,7 +187,28 @@ require("lazy").setup({
     end,
     -- Optional: Load Copilot only when needed
     -- event = "InsertEnter",
-  }
+  },
+  
+  -- LaTeX “IDE”
+  { "lervag/vimtex",         -- compile, forward/inverse search
+    init = function()
+      vim.g.vimtex_view_method      = "zathura"     -- viewer
+      vim.g.vimtex_compiler_method  = "latexmk"
+      vim.g.vimtex_compiler_latexmk = {              -- keep PDFs in ./build
+        build_dir = "build",
+        continuous = 1,          -- -pvc
+      }
+    end,
+    lazy = false },              -- VimTeX self-manages lazy-loading
+
+  -- LSP server for completion / diagnostics
+  { "neovim/nvim-lspconfig",
+    dependencies = { "latex-lsp/texlab" },           -- texlab binary in PATH
+    config = function()
+      require("lspconfig").texlab.setup{
+        settings = { texlab = { build = { onSave = false } } }
+      }
+    end }  
 
 })
 
