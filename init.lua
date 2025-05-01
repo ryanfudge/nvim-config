@@ -1,222 +1,159 @@
--- ~/.config/nvim/init.lua
-
--- 1. Bootstrap lazy.nvim
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not vim.loop.fs_stat(lazypath) then
-  vim.fn.system({
-    "git",
-    "clone",
-    "--filter=blob:none",
-    "https://github.com/folke/lazy.nvim.git",
-    "--branch=stable",
-    lazypath,
-  })
-end
-vim.opt.rtp:prepend(lazypath)
-
--- 2. Initialize lazy.nvim with plugins
-require("lazy").setup({
-  -- A) Gruvbox Theme
-  {
-    "ellisonleao/gruvbox.nvim",
-    config = function()
-      require("gruvbox").setup({
-        bold = true,
-        italic = {
-          strings = false,
-          comments = false,
-          operators = false,
-          folds = false,
-        },
-        underline = true,
-        contrast = "hard", -- "hard", "soft", or "medium"
-        overrides = {},
-        dim_inactive = false,
-        transparent_mode = false,
-      })
-      vim.cmd.colorscheme("gruvbox")
-    end,
-  },
-
-  -- B) Telescope
-  {
-    "nvim-telescope/telescope.nvim",
-    dependencies = { 
-      "nvim-lua/plenary.nvim",
-      { 
-        'nvim-telescope/telescope-fzf-native.nvim', 
-        -- More explicit build command
-        build = 'cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release && cmake --install build',
-        -- Ensure the plugin is only loaded if build is successful
-        cond = function()
-          return vim.fn.executable('cmake') == 1 and 
-                 vim.fn.executable('make') == 1
-        end
-      }
-    },
-    config = function()
-      local telescope = require("telescope")
-      
-      telescope.setup({
-        extensions = {
-          fzf = {
-            fuzzy = true,                    -- false will only do exact matching
-            override_generic_sorter = true,  -- override the generic sorter
-            override_file_sorter = true,     -- override the file sorter
-            case_mode = "smart_case",        -- or "ignore_case" or "respect_case"
-          }
-        }
-      })
+-- shim deprecated API
+if vim.lsp and vim.lsp.start then
+    vim.lsp.start_client = function(config)
+      return vim.lsp.start(config)
+    end
+  end
   
-      -- fzf extension
-      pcall(telescope.load_extension, 'fzf')
+  -- 0. Leader keys (set before loading plugins)
+  vim.g.mapleader      = "\\"
+  vim.g.maplocalleader = "\\"
   
-      -- Keybindings
-      local builtin = require("telescope.builtin")
-      vim.keymap.set("n", "<leader>ff", builtin.find_files, { desc = "Find Files" })
-      vim.keymap.set("n", "<leader>fg", builtin.live_grep, { desc = "Live Grep" })
-      vim.keymap.set("n", "<leader>fb", builtin.buffers, { desc = "Buffers" })
-      vim.keymap.set("n", "<leader>fh", builtin.help_tags, { desc = "Help Tags" })
-    end,
-  },
-
-  -- C) nvim-cmp (Autocompletion)
-  {
-    "hrsh7th/nvim-cmp",
-    dependencies = {
-      "hrsh7th/cmp-buffer",
-      "hrsh7th/cmp-path",
-      "hrsh7th/cmp-cmdline",
-      "hrsh7th/cmp-nvim-lsp",
-      "L3MON4D3/LuaSnip",
-      "saadparwaiz1/cmp_luasnip",
+  -- 1. Bootstrap lazy.nvim
+  local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+  if not vim.loop.fs_stat(lazypath) then
+    vim.fn.system({
+      "git", "clone", "--filter=blob:none",
+      "https://github.com/folke/lazy.nvim.git",
+      "--branch=stable", lazypath,
+    })
+  end
+  vim.opt.rtp:prepend(lazypath)
+  
+  -- 2. Plugin setup
+  require("lazy").setup({
+  
+    ------------------------------------------------------------------
+    -- A) CORE LSP STACK (load first so `require("lspconfig")` never breaks)
+    ------------------------------------------------------------------
+    {
       "neovim/nvim-lspconfig",
-    },
-    config = function()
-      local cmp = require("cmp")
-      local luasnip = require("luasnip")
-
-      cmp.setup({
-        snippet = {
-          expand = function(args)
-            luasnip.lsp_expand(args.body)
+      lazy = false,
+      dependencies = {
+        "williamboman/mason.nvim",
+        "williamboman/mason-lspconfig.nvim",
+        "hrsh7th/cmp-nvim-lsp",        -- for capabilities
+        "hrsh7th/nvim-cmp",            -- completion engine
+        "L3MON4D3/LuaSnip",            -- snippet engine
+        "saadparwaiz1/cmp_luasnip",    -- luasnips source
+      },
+      config = function()
+        -- 1.1 Mason
+        require("mason").setup()
+        require("mason-lspconfig").setup({
+          ensure_installed = { "pyright", "clangd", "gopls", "texlab" },
+        })
+        require("mason-lspconfig").setup_handlers({
+          -- default handler for any server
+          function(server_name)
+            require("lspconfig")[server_name].setup({
+              capabilities = require("cmp_nvim_lsp").default_capabilities(),
+            })
           end,
-        },
-        mapping = {
-          ["<Tab>"] = cmp.mapping.select_next_item(),
-          ["<S-Tab>"] = cmp.mapping.select_prev_item(),
-          ["<CR>"] = cmp.mapping.confirm({ select = true }),
-        },
-        sources = {
-          { name = "nvim_lsp" },
-          { name = "path" },
-          { name = "buffer" },
-          { name = "luasnip" },
-        },
-      })
-
-      -- Setup LSP
-      local lspconfig = require("lspconfig")
-      lspconfig.pyright.setup({
-        capabilities = require("cmp_nvim_lsp").default_capabilities(),
-      })
-      lspconfig.clangd.setup({
-        capabilities = require("cmp_nvim_lsp").default_capabilities(),
-      })
-    end,
-  },
-
-  -- Mason Plugins
-  {
-    "williamboman/mason.nvim",
-    config = function()
-      require("mason").setup()
-    end,
-  },
-  {
-    "williamboman/mason-lspconfig.nvim",
-    dependencies = { "williamboman/mason.nvim", "neovim/nvim-lspconfig" },
-    config = function()
-      require("mason-lspconfig").setup({
-        ensure_installed = { "pyright", "clangd", "gopls"},
-      })
-      require("mason-lspconfig").setup_handlers({
-        function(server_name)
-          require("lspconfig")[server_name].setup({
-            capabilities = require("cmp_nvim_lsp").default_capabilities(),
-          })
-        end,
-      })
-    end,
-  },
-
-  -- D) nvim-tree.lua (File Explorer)
-  {
-    "nvim-tree/nvim-tree.lua",
-    dependencies = {
-      "nvim-tree/nvim-web-devicons",
-    },
-    config = function()
-      require("nvim-tree").setup({
-        update_focused_file = {
-          enable = true,
-          update_cwd = true,
-        },
-        view = {
-          width = 30,
-        },
-      })
-      -- Keybinding to toggle nvim-tree
-      vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { desc = "Toggle Nvim-Tree" })
-    end,
-  },
-  -- E) GitHub Copilot
-  {
-    "github/copilot.vim",
-    config = function()
-      -- Optional: Disable default Copilot mappings if you prefer to set your own
-      vim.g.copilot_no_tab_map = true
-
-      -- Set up keybindings for Copilot
-      -- Example: Use <C-J> to accept Copilot suggestions
-      vim.api.nvim_set_keymap("i", "<C-J>", 'copilot#Accept("<CR>")', { expr = true, silent = true, noremap = true })
-
-      -- Optional: Trigger Copilot manually
-      vim.api.nvim_set_keymap("n", "<leader>cp", ":Copilot panel<CR>", { silent = true, noremap = true })
-      vim.api.nvim_set_keymap("n", "<leader>cf", ":Copilot suggestion<CR>", { silent = true, noremap = true })
-    end,
-    -- Optional: Load Copilot only when needed
-    -- event = "InsertEnter",
-  },
+        })
   
-  -- LaTeX “IDE”
-  { "lervag/vimtex",         -- compile, forward/inverse search
-    init = function()
-      vim.g.vimtex_view_method      = "zathura"     -- viewer
-      vim.g.vimtex_compiler_method  = "latexmk"
-      vim.g.vimtex_compiler_latexmk = {              -- keep PDFs in ./build
-        build_dir = "build",
-        continuous = 1,          -- -pvc
-      }
-    end,
-    lazy = false },              -- VimTeX self-manages lazy-loading
-
-  -- LSP server for completion / diagnostics
-  { "neovim/nvim-lspconfig",
-    dependencies = { "latex-lsp/texlab" },           -- texlab binary in PATH
-    config = function()
-      require("lspconfig").texlab.setup{
-        settings = { texlab = { build = { onSave = false } } }
-      }
-    end }  
-
-})
-
--- 3. General Settings
-vim.opt.number = true
-vim.opt.relativenumber = true
-vim.g.mapleader = " "
-
--- Optional: Additional UI Tweaks
-vim.opt.termguicolors = true
-vim.opt.cursorline = true
+        -- 1.2 nvim-cmp
+        local cmp = require("cmp")
+        local luasnip = require("luasnip")
+        cmp.setup({
+          snippet = { expand = function(args) luasnip.lsp_expand(args.body) end },
+          mapping = {
+            ["<Tab>"]   = cmp.mapping.select_next_item(),
+            ["<S-Tab>"] = cmp.mapping.select_prev_item(),
+            ["<CR>"]    = cmp.mapping.confirm({ select = true }),
+          },
+          sources = {
+            { name = "nvim_lsp" },
+            { name = "path" },
+            { name = "buffer" },
+            { name = "luasnip" },
+          },
+        })
+      end,
+    },
+  
+    {
+      "lervag/vimtex",
+      ft = { "tex", "plaintex" },
+      config = function()
+        vim.g.vimtex_view_method = "zathura"
+        vim.g.vimtex_compiler_method = "latexmk"
+        vim.g.vimtex_compiler_latexmk = {
+          build_dir  = "build",
+          continuous = 1,
+        }
+      end,
+    },
+  
+    {
+      "nvim-treesitter/nvim-treesitter",
+      build = ":TSUpdate",
+      config = function()
+        require("nvim-treesitter.configs").setup {
+          ensure_installed = { "lua", "python", "c", "cpp", "rust" },
+          highlight        = { enable = true },
+          indent           = { enable = true },
+        }
+      end,
+    },
+  
+    ---------------------------------------------------
+    -- B) COLORS, UI, NAVIGATION & GIT
+    ---------------------------------------------------
+    {
+      "ellisonleao/gruvbox.nvim",
+      config = function()
+        require("gruvbox").setup({ contrast = "hard", transparent_mode = false })
+        vim.cmd.colorscheme("gruvbox")
+      end,
+    },
+  
+    {
+      "nvim-telescope/telescope.nvim",
+      dependencies = { "nvim-lua/plenary.nvim",
+        { "nvim-telescope/telescope-fzf-native.nvim",
+          build = 'cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release && cmake --install build',
+          cond  = function() return vim.fn.executable("cmake")==1 end,
+        },
+      },
+      config = function()
+        local tele = require("telescope")
+        tele.setup({ extensions = { fzf = { fuzzy = true, override_generic_sorter = true, override_file_sorter = true } } })
+        pcall(tele.load_extension, "fzf")
+        local b = require("telescope.builtin")
+        vim.keymap.set("n","<leader>ff",b.find_files,{desc="Find Files"})
+        vim.keymap.set("n","<leader>fg",b.live_grep,{desc="Live Grep"})
+        vim.keymap.set("n","<leader>fb",b.buffers,{desc="Buffers"})
+        vim.keymap.set("n","<leader>fh",b.help_tags,{desc="Help Tags"})
+      end,
+    },
+  
+    {
+      "nvim-tree/nvim-tree.lua",
+      dependencies = "nvim-tree/nvim-web-devicons",
+      config = function()
+        require("nvim-tree").setup({
+          update_focused_file = { enable = true, update_cwd = true },
+          view = { width = 30 },
+        })
+        vim.keymap.set("n","<leader>e",":NvimTreeToggle<CR>",{desc="Toggle Explorer"})
+      end,
+    },
+  
+    {
+      "github/copilot.vim",
+      config = function()
+        vim.g.copilot_no_tab_map = true
+        vim.api.nvim_set_keymap("i","<C-J>", 'copilot#Accept("<CR>")', { expr=true, silent=true })
+        vim.api.nvim_set_keymap("n","<leader>cp",":Copilot panel<CR>",{silent=true})
+      end,
+    },
+  
+  })
+  
+  -- 3. General Settings (after plugin setup)
+  vim.opt.number         = true
+  vim.opt.relativenumber = true
+  vim.opt.termguicolors  = true
+  vim.opt.cursorline     = true
+  
