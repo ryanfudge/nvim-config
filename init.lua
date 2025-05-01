@@ -8,6 +8,15 @@ if vim.lsp and vim.lsp.start then
   -- 0. Leader keys (set before loading plugins)
   vim.g.mapleader      = "\\"
   vim.g.maplocalleader = "\\"
+  vim.g.vimtex_compiler_latexmk = {
+    executable = 'latexmk',
+    options = {
+      '-synctex=1',
+      '-interaction=nonstopmode',
+      '-file-line-error',
+      '-shell-escape',     -- <- the critical flag
+    },
+  }
   
   -- 1. Bootstrap lazy.nvim
   local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
