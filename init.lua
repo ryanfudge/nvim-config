@@ -8,13 +8,17 @@ if vim.lsp and vim.lsp.start then
   -- 0. Leader keys (set before loading plugins)
   vim.g.mapleader      = "\\"
   vim.g.maplocalleader = "\\"
+  
+  -- 0.1 vimtex: compiler definition *with* -shell-escape and build dir
   vim.g.vimtex_compiler_latexmk = {
     executable = 'latexmk',
+    build_dir  = 'build',     -- compiled files under ./build
+    continuous = 1,
     options = {
       '-synctex=1',
       '-interaction=nonstopmode',
       '-file-line-error',
-      '-shell-escape',     -- <- the critical flag
+      '-shell-escape',       -- ← critical flag so minted can call pygmentize
     },
   }
   
@@ -31,7 +35,6 @@ if vim.lsp and vim.lsp.start then
   
   -- 2. Plugin setup
   require("lazy").setup({
-  
     ------------------------------------------------------------------
     -- A) CORE LSP STACK (load first so `require("lspconfig")` never breaks)
     ------------------------------------------------------------------
@@ -81,16 +84,13 @@ if vim.lsp and vim.lsp.start then
       end,
     },
   
+    -- vimtex: keep config *light* so it doesn't overwrite our global table
     {
       "lervag/vimtex",
       ft = { "tex", "plaintex" },
-      config = function()
+      init = function()
         vim.g.vimtex_view_method = "zathura"
-        vim.g.vimtex_compiler_method = "latexmk"
-        vim.g.vimtex_compiler_latexmk = {
-          build_dir  = "build",
-          continuous = 1,
-        }
+        vim.g.vimtex_compiler_method = "latexmk" -- uses table defined above
       end,
     },
   
